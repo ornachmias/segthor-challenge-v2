@@ -63,10 +63,10 @@ parser.add_argument(
     metavar='LR',
     help='initial learning rate')
 parser.add_argument(
-    '--momentum', 
-    default=0.9, 
-    type=float, 
-    metavar='M', 
+    '--momentum',
+    default=0.9,
+    type=float,
+    metavar='M',
     help='momentum')
 parser.add_argument(
     '--resume',
@@ -88,10 +88,10 @@ parser.add_argument(
     metavar='SAVE',
     help='directory to save checkpoint (default: none)')
 parser.add_argument(
-    '--gpu', 
-    default='all', 
-    type=str, 
-    metavar='N', 
+    '--gpu',
+    default='all',
+    type=str,
+    metavar='N',
     help='use gpu')
 parser.add_argument(
     '--patient',
@@ -142,7 +142,6 @@ parser.add_argument(
     metavar='1(True) or 0(False)',
     help='if using multi-task learning')
 
-
 DEVICE = torch.device("cuda" if True else "cpu")
 
 
@@ -152,7 +151,7 @@ def main(args):
     cudnn.benchmark = True
     setgpu(args.gpu)
     data_path = args.data_path
-    train_files, test_files = get_cross_validation_paths(args.test_flag) 
+    train_files, test_files = get_cross_validation_paths(args.test_flag)
     if args.if_dependent == 1:
         alpha = get_global_alpha(train_files, data_path)
         alpha = torch.from_numpy(alpha).float().to(DEVICE)
@@ -161,8 +160,8 @@ def main(args):
         alpha = None
     model = import_module('models.model_loader')
     net, loss = model.get_full_model(
-        args.model_name, 
-        args.loss_name, 
+        args.model_name,
+        args.loss_name,
         n_classes=args.n_class,
         alpha=alpha,
         if_closs=args.if_closs)
@@ -186,6 +185,7 @@ def main(args):
         weight_decay=args.weight_decay)
 
     init_lr = np.copy(args.lr)
+
     def get_lr(epoch):
         if args.lr < 0.0001:
             return args.lr
@@ -193,12 +193,12 @@ def main(args):
             args.lr = args.lr * 0.95
             logging.info('current learning rate is %f' % args.lr)
         return args.lr
-    
+
     composed_transforms_tr = transforms.Compose([
-    tr.RandomZoom((512, 512)),
-    tr.RandomHorizontalFlip(),
-    tr.Normalize(mean=(0.12, 0.12, 0.12), std=(0.018, 0.018, 0.018)),
-    tr.ToTensor2(args.n_class)])
+        tr.RandomZoom((512, 512)),
+        tr.RandomHorizontalFlip(),
+        tr.Normalize(mean=(0.12, 0.12, 0.12), std=(0.018, 0.018, 0.018)),
+        tr.ToTensor2(args.n_class)])
     train_dataset = THOR_Data(
         transform=composed_transforms_tr, path=data_path, file_list=train_files)
     trainloader = DataLoader(
@@ -208,7 +208,7 @@ def main(args):
         num_workers=4)
     break_flag = 0.
     high_dice = 0.
-    selected_thresholds = np.zeros((args.n_class-1, ))
+    selected_thresholds = np.zeros((args.n_class - 1,))
     run_id = str(uuid.uuid4())
     cur_train_stats_path = train_stats_path.format(run_id)
     cur_eval_stats_path = eval_stats_path.format(run_id)
@@ -221,9 +221,9 @@ def main(args):
         writer.writerow(stats_fields)
 
     for epoch in range(start_epoch, args.epochs + 1):
-        train_loss, adaptive_thresholds = train(trainloader, net, loss, epoch, 
-                                   optimizer, get_lr,
-                                   save_dir, cur_train_stats_path)
+        train_loss, adaptive_thresholds = train(trainloader, net, loss, epoch,
+                                                optimizer, get_lr,
+                                                save_dir, cur_train_stats_path)
         if epoch < args.untest_epoch:
             continue
         break_flag += 1
@@ -254,7 +254,7 @@ def main(args):
             )
         if break_flag > args.patient:
             break
-    #np.save(args.save_dir, np.array(adaptive_thresholds)) #save for plot
+    # np.save(args.save_dir, np.array(adaptive_thresholds)) #save for plot
 
 
 def train(data_loader, net, loss, epoch, optimizer, get_lr, save_dir, stats_path):
@@ -263,7 +263,7 @@ def train(data_loader, net, loss, epoch, optimizer, get_lr, save_dir, stats_path
     lr = get_lr(epoch)
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
-        
+
     total_train_loss = []
     class_predict = []
     class_target = []
@@ -294,7 +294,7 @@ def train(data_loader, net, loss, epoch, optimizer, get_lr, save_dir, stats_path
     adaptive_thresholds = get_threshold(total_train_class_predict,
                                         total_train_class_target, 0.995)
     cur_precision, _ = metric(total_train_class_predict, total_train_class_target,
-                     adaptive_thresholds)
+                              adaptive_thresholds)
     logging.info(
         'Epoch[%d], [precision=%.4f, -->%.3f, -->%.3f, -->%.3f, -->%.3f]' %
         (epoch, np.mean(cur_precision), np.mean(cur_precision[0]), np.mean(cur_precision[1]),
@@ -313,57 +313,38 @@ def train(data_loader, net, loss, epoch, optimizer, get_lr, save_dir, stats_path
 
 
 def evaluation(args, net, loss, epoch, save_dir, test_files, saved_thresholds, stats_path):
-    start_time = time.time()
-    net.eval()
-    eval_loss = []
+    cur_predict, cur_target, class_predict, class_target, eval_loss, start_time = run_on_evaluation_set(args,
+                                                                                                        net,
+                                                                                                        loss,
+                                                                                                        epoch,
+                                                                                                        save_dir,
+                                                                                                        test_files,
+                                                                                                        saved_thresholds,
+                                                                                                        stats_path)
+
+    return evaluate_test_results(cur_predict,
+                                 cur_target,
+                                 class_predict,
+                                 class_target,
+                                 saved_thresholds,
+                                 epoch,
+                                 start_time,
+                                 eval_loss,
+                                 stats_path)
+
+
+def evaluate_test_results(cur_predict, cur_target, class_predict, class_traget, saved_thresholds, epoch, start_time,
+                          eval_loss, stats_path):
     total_precision = []
     total_recall = []
-    
-    composed_transforms_tr = transforms.Compose([
-        tr.Normalize(mean=(0.12, 0.12, 0.12), std=(0.018, 0.018, 0.018)),
-        tr.ToTensor2(args.n_class)
-    ])
-    eval_dataset = THOR_Data(
-        transform=composed_transforms_tr,
-        path=args.data_path,
-        file_list=test_files
-        )
-    evalloader = DataLoader(
-        eval_dataset,
-        batch_size=args.batch_size,
-        shuffle=False,
-        num_workers=4)
-    cur_target = []
-    cur_predict = []
-    class_predict = []
-    class_target = []
-    for i, sample in enumerate(evalloader):
-        data = sample['image']
-        target_c = sample['label_c']
-        target_s = sample['label_s']
-        data = data.to(DEVICE)
-        target_c = target_c.to(DEVICE)
-        target_s = target_s.to(DEVICE)
-        with torch.no_grad():
-            output_s, output_c = net(data)
-            cur_loss, _, _, c_p = loss(output_s, output_c, target_s, target_c)
-        eval_loss.append(cur_loss.item())
-        with open(stats_path, 'a') as f:
-            writer = csv.writer(f)
-            writer.writerow([epoch, i, cur_loss.item()])
-        cur_target.append(torch.argmax(target_s, 1).cpu().numpy())
-        cur_predict.append(torch.argmax(output_s, 1).cpu().numpy())
-        class_target.append(target_c.cpu().numpy())
-        class_predict.append(c_p.cpu().numpy())
-        cur_precision, cur_recall = metric(
-        np.concatenate(class_predict, 0), np.concatenate(class_target, 0),
+
+    cur_precision, cur_recall = metric(
+        class_predict, class_traget,
         saved_thresholds)
-        
     total_precision.append(np.array(cur_precision))
     total_recall.append(np.array(cur_recall))
-
     TPVFs, dices, PPVs, FPVFs = segmentation_metrics(
-        np.concatenate(cur_predict, 0), np.concatenate(cur_target, 0))
+        cur_predict, cur_target)
     logging.info(
         '***************************************************************************'
     )
@@ -393,8 +374,8 @@ def evaluation(args, net, loss, epoch, save_dir, test_files, saved_thresholds, s
            time.time() - start_time))
     with open(stats_path, 'a') as f:
         writer = csv.writer(f)
-        writer.writerow([epoch, i, np.mean(eval_loss), np.mean(total_precision), np.mean(total_precision[0]),
-           np.mean(total_precision[1]), np.mean(total_precision[2]), np.mean(total_precision[3]),
+        writer.writerow([epoch, "NA", np.mean(eval_loss), np.mean(total_precision), np.mean(total_precision[0]),
+                         np.mean(total_precision[1]), np.mean(total_precision[2]), np.mean(total_precision[3]),
                          np.mean(dices), dices[0], dices[1], dices[2], dices[3]])
     logging.info(
         'Epoch[%d], [total loss=%.6f], mean_dice=%.4f, using %.1f s!'
@@ -404,6 +385,53 @@ def evaluation(args, net, loss, epoch, save_dir, test_files, saved_thresholds, s
         '***************************************************************************'
     )
     return np.mean(dices), np.mean(total_precision)
+
+
+def run_on_evaluation_set(args, net, loss, epoch, save_dir, test_files, saved_thresholds, stats_path):
+    net.eval()
+    eval_loss = []
+    start_time = time.time()
+
+    composed_transforms_tr = transforms.Compose([
+        tr.Normalize(mean=(0.12, 0.12, 0.12), std=(0.018, 0.018, 0.018)),
+        tr.ToTensor2(args.n_class)
+    ])
+    eval_dataset = THOR_Data(
+        transform=composed_transforms_tr,
+        path=args.data_path,
+        file_list=test_files
+    )
+    evalloader = DataLoader(
+        eval_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=4)
+    cur_target = []
+    cur_predict = []
+    class_predict = []
+    class_target = []
+    for i, sample in enumerate(evalloader):
+        data = sample['image']
+        target_c = sample['label_c']
+        target_s = sample['label_s']
+        data = data.to(DEVICE)
+        target_c = target_c.to(DEVICE)
+        target_s = target_s.to(DEVICE)
+        with torch.no_grad():
+            output_s, output_c = net(data)
+            cur_loss, _, _, c_p = loss(output_s, output_c, target_s, target_c)
+        eval_loss.append(cur_loss.item())
+        with open(stats_path, 'a') as f:
+            writer = csv.writer(f)
+            writer.writerow([epoch, i, cur_loss.item()])
+        cur_target.append(torch.argmax(target_s, 1).cpu().numpy())
+        cur_predict.append(torch.argmax(output_s, 1).cpu().numpy())
+        class_target.append(target_c.cpu().numpy())
+        class_predict.append(c_p.cpu().numpy())
+
+    return np.concatenate(cur_predict, 0), np.concatenate(cur_target, 0), np.concatenate(class_predict,
+                                                                                         0), np.concatenate(
+        class_target, 0), eval_loss, start_time
 
 
 if __name__ == '__main__':
@@ -428,6 +456,3 @@ if __name__ == '__main__':
     console.setLevel(logging.INFO)
     logging.getLogger().addHandler(console)
     main(args)
-    
-    
-    
