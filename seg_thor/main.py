@@ -278,7 +278,6 @@ def train(data_loader, net, loss, epoch, optimizer, get_lr, save_dir, stats_path
         output_s, output_c = net(data)
         optimizer.zero_grad()
         cur_loss, _, _, c_p = loss(output_s, output_c, target_s, target_c)
-        print('cur_loss shape is {}'.format(cur_loss.shape))
         with open(stats_path, 'a') as f:
             writer = csv.writer(f)
             writer.writerow([epoch, i, cur_loss.item()])
