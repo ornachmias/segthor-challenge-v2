@@ -122,4 +122,22 @@ class THOR_Data(Dataset):
     def __str__(self):
         pass
 
+    def get_patient_data(self, dir_name):
+        result = []
+        data_files = [x for x in self.data_files if dir_name in x]
+        label_files = [x for x in self.label_files if dir_name in x]
+
+        for i in range(len(data_files)):
+            _img = np.load(data_files[i])
+            _img = Image.fromarray(_img)
+            _target = np.load(label_files[i])
+            _target = Image.fromarray(np.uint8(_target))
+            sample = {'image': _img, 'label': _target}
+            if self.transform is not None:
+                sample = self.transform(sample)
+
+            result.append(sample)
+
+        return result
+
     
