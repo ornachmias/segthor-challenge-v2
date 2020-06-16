@@ -60,7 +60,6 @@ if __name__ == '__main__':
     draw_batch_loss(train_df, interval, os.path.join(output_path, 'train_batch_loss.png'), 'Train Batch Loss')
     draw_epoch_loss(train_df, os.path.join(output_path, 'train_epoch_loss.png'), 'Train Epoch Loss')
     draw_precision(train_df, os.path.join(output_path, 'train_precision.png'), 'Train Precision')
-    draw_dice(train_df, os.path.join(output_path, 'train_dice.png'), 'Train Dice')
 
     eval_df = pd.read_csv(cur_eval_stats_path)
     eval_df.insert(0, 'step', range(len(eval_df)))
