@@ -1,29 +1,24 @@
 import argparse
+import csv
+import logging
 import os
 import time
-import numpy as np
-
-import shutil
-import ntpath
-import sys
-import pdb
-import logging
-import gc
-import resource
-
+import uuid
 from importlib import import_module
+
+import data_utils.transforms as tr
+import numpy as np
 import torch
-from torch.nn import DataParallel
+from data_utils.torch_data import THOR_Data, get_cross_validation_paths, get_global_alpha
 from torch.backends import cudnn
-from torch import optim
-import torch.nn.functional as F
+from torch.nn import DataParallel
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from data_utils.torch_data import THOR_Data, get_cross_validation_paths, get_global_alpha
-import data_utils.transforms as tr
 from utils import setgpu, get_threshold, metric, segmentation_metrics
 
 ###########################################################################
+from seg_thor.stats import train_stats_path, eval_stats_path, stats_fields
+
 """
                 The main function of SegTHOR
                       Python 3
@@ -150,6 +145,7 @@ parser.add_argument(
 
 DEVICE = torch.device("cuda" if True else "cpu")
 
+
 def main(args):
     max_precision = 0.
     torch.manual_seed(123)
@@ -213,14 +209,26 @@ def main(args):
     break_flag = 0.
     high_dice = 0.
     selected_thresholds = np.zeros((args.n_class-1, ))
+    run_id = str(uuid.uuid4())
+    cur_train_stats_path = train_stats_path.format(run_id)
+    cur_eval_stats_path = eval_stats_path.format(run_id)
+    with open(cur_train_stats_path, 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(stats_fields)
+
+    with open(cur_eval_stats_path, 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(stats_fields)
+
     for epoch in range(start_epoch, args.epochs + 1):
         train_loss, adaptive_thresholds = train(trainloader, net, loss, epoch, 
                                    optimizer, get_lr,
-                                   save_dir)
+                                   save_dir, cur_train_stats_path)
         if epoch < args.untest_epoch:
             continue
         break_flag += 1
-        eval_dice, eval_precision = evaluation(args, net, loss, epoch, save_dir, test_files, selected_thresholds)
+        eval_dice, eval_precision = evaluation(args, net, loss, epoch, save_dir, test_files, selected_thresholds,
+                                               cur_eval_stats_path)
         if max_precision <= eval_precision:
             selected_thresholds = adaptive_thresholds
             max_precision = eval_precision
@@ -249,7 +257,7 @@ def main(args):
     #np.save(args.save_dir, np.array(adaptive_thresholds)) #save for plot
 
 
-def train(data_loader, net, loss, epoch, optimizer, get_lr, save_dir):
+def train(data_loader, net, loss, epoch, optimizer, get_lr, save_dir, stats_path):
     start_time = time.time()
     net.train()
     lr = get_lr(epoch)
@@ -269,12 +277,15 @@ def train(data_loader, net, loss, epoch, optimizer, get_lr, save_dir):
         output_s, output_c = net(data)
         optimizer.zero_grad()
         cur_loss, _, _, c_p = loss(output_s, output_c, target_s, target_c)
+        with open(stats_path, 'a') as f:
+            writer = csv.writer(f)
+            writer.writerow([epoch, i, cur_loss.item()])
         total_train_loss.append(cur_loss.item())
         class_target.append(target_c.detach().cpu().numpy())
         class_predict.append(c_p.detach().cpu().numpy())
         cur_loss.backward()
         optimizer.step()
-        
+
     logging.info(
         'Epoch[%d], Batch [%d], total loss is %.6f, using %.1f s!' %
         (epoch, i, np.mean(total_train_loss), time.time() - start_time))
@@ -291,10 +302,17 @@ def train(data_loader, net, loss, epoch, optimizer, get_lr, save_dir):
     logging.info('the adaptive thresholds is [%.4f, %.4f, %.4f, %.4f]' %
                  (adaptive_thresholds[0], adaptive_thresholds[1],
                   adaptive_thresholds[2], adaptive_thresholds[3]))
+
+    with open(stats_path, 'a') as f:
+        writer = csv.writer(f)
+        writer.writerow([epoch, i, np.mean(total_train_loss), np.mean(cur_precision),
+                         np.mean(cur_precision[0]), np.mean(cur_precision[1]), np.mean(cur_precision[2]),
+                         np.mean(cur_precision[3])])
+
     return np.mean(total_train_loss), adaptive_thresholds
 
 
-def evaluation(args, net, loss, epoch, save_dir, test_files, saved_thresholds):
+def evaluation(args, net, loss, epoch, save_dir, test_files, saved_thresholds, stats_path):
     start_time = time.time()
     net.eval()
     eval_loss = []
@@ -330,6 +348,9 @@ def evaluation(args, net, loss, epoch, save_dir, test_files, saved_thresholds):
             output_s, output_c = net(data)
             cur_loss, _, _, c_p = loss(output_s, output_c, target_s, target_c)
         eval_loss.append(cur_loss.item())
+        with open(stats_path, 'a') as f:
+            writer = csv.writer(f)
+            writer.writerow([epoch, i, cur_loss.item()])
         cur_target.append(torch.argmax(target_s, 1).cpu().numpy())
         cur_predict.append(torch.argmax(output_s, 1).cpu().numpy())
         class_target.append(target_c.cpu().numpy())
@@ -370,6 +391,11 @@ def evaluation(args, net, loss, epoch, save_dir, test_files, saved_thresholds):
         % (epoch, np.mean(total_recall), np.mean(total_recall[0]),
            np.mean(total_recall[1]), np.mean(total_recall[2]), np.mean(total_recall[3]),
            time.time() - start_time))
+    with open(stats_path, 'a') as f:
+        writer = csv.writer(f)
+        writer.writerow([epoch, i, np.mean(eval_loss), np.mean(total_precision), np.mean(total_precision[0]),
+           np.mean(total_precision[1]), np.mean(total_precision[2]), np.mean(total_precision[3]),
+                         np.mean(dices), dices[0], dices[1], dices[2], dices[3]])
     logging.info(
         'Epoch[%d], [total loss=%.6f], mean_dice=%.4f, using %.1f s!'
         % (epoch, np.mean(eval_loss), np.mean(dices),
