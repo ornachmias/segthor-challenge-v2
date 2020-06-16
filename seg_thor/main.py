@@ -15,9 +15,9 @@ from torch.nn import DataParallel
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from utils import setgpu, get_threshold, metric, segmentation_metrics
+from stats import train_stats_path, eval_stats_path, stats_fields
 
 ###########################################################################
-from seg_thor.stats import train_stats_path, eval_stats_path, stats_fields
 
 """
                 The main function of SegTHOR
