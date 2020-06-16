@@ -171,5 +171,5 @@ class DicePlusXEntLoss(nn.Module):
         probs = probs.view(batch_size, n_class, -1)
         s_loss = self.s_loss_fun(probs, labels)
         c_loss, c_p = self.c_loss_fun(c_logit, c_label)
-        total_loss = s_loss + self.closs_flag * c_loss
+        total_loss = s_loss + c_loss
         return total_loss, c_loss, s_loss, c_p
