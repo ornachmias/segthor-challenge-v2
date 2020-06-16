@@ -1,11 +1,13 @@
-from torch import nn
-import torch
- 
-def get_full_model(model_name = 'deeplabv3_plus_resnet', loss_name = 'DiceLoss2', n_classes=5, alpha=None, if_closs=1, pretrained=True):
+def get_full_model(model_name='deeplabv3_plus_resnet', loss_name='DiceLoss2', n_classes=5, alpha=None,
+                   if_closs=1, pretrained=True, class_weights=None):
+
     if loss_name == 'CombinedLoss':
         from .loss_funs import CombinedLoss
         loss = CombinedLoss(alpha=alpha, if_closs=if_closs)
-        
+    elif loss_name == 'DicePlusXEnt':
+        from .loss_funs import DicePlusXEntLoss
+        loss = DicePlusXEntLoss(class_weights=class_weights)
+
     if model_name == 'ResUNet101':
         from .my_unet import ResUNet101
         net = ResUNet101(n_channels=3, n_classes=n_classes, drop_rate=0., pretrained=pretrained)

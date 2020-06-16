@@ -156,4 +156,22 @@ class CombinedLoss(nn.Module):
         c_loss, c_p = self.c_loss_fun(c_logit, c_label)
         total_loss = s_loss + self.closs_flag * c_loss
         return total_loss, c_loss, s_loss, c_p
-    
+
+
+class DicePlusXEntLoss(nn.Module):
+    def __init__(self, class_weights):
+        super(DicePlusXEntLoss, self).__init__()
+        self.class_weights = class_weights
+        self.binary_loss = BCELoss(if_mean=False)
+        self.dice_loss = SoftDiceLoss()
+
+    def forward(self, inputs, target):
+        n_class = inputs.size(1)
+        count_loss = 0
+
+        for class_index in range(n_class):
+            cur_loss = self.class_weights[class_index] * \
+                       self.binary_loss(inputs[:, class_index], target[:, class_index])
+            count_loss += cur_loss.mean()
+
+        return count_loss + self.dice_loss(inputs, target), inputs
