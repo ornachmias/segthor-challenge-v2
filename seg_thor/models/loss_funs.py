@@ -107,6 +107,22 @@ class MultiLabelLoss(nn.Module):
         return count_loss, inputs
 
 
+class MultiLabelWeightedLoss(nn.Module):
+    def __init__(self, class_weights):
+        super(MultiLabelWeightedLoss, self).__init__()
+        self.class_weights = class_weights
+        self.binary_loss = BCELoss(if_mean=False)
+
+    def forward(self, inputs, target):
+        n_class = inputs.size(1)
+        count_loss = 0
+        for class_index in range(n_class):
+            cur_loss = self.binary_loss(inputs[:, class_index],
+                                        target[:, class_index])
+            count_loss += cur_loss.mean() * self.alpha[class_index]
+        return count_loss, inputs
+
+
 class SoftDiceLoss(nn.Module):
     """
     The Dice Loss function
@@ -162,7 +178,7 @@ class DicePlusXEntLoss(nn.Module):
     def __init__(self, class_weights):
         super(DicePlusXEntLoss, self).__init__()
         self.s_loss_fun = SoftDiceLoss()
-        self.c_loss_fun = MultiLabelLoss(alpha=class_weights)
+        self.c_loss_fun = MultiLabelWeightedLoss(class_weights=class_weights)
 
     def forward(self, s_logit, c_logit, s_label, c_label):
         probs = F.softmax(s_logit, 1)
