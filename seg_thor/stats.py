@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 stats_fields = ['epoch', 'batch', 'loss',
                 'total_precision', 'precision_1', 'precision_2', 'precision_3', 'precision_4',
                 'total_dice', 'dice_1', 'dice_2', 'dice_3', 'dice_4']
-train_stats_path = './data/{}_train_stats.csv'
-eval_stats_path = './data/{}_eval_stats.csv'
+train_stats_path = '../data/{}_train_stats.csv'
+eval_stats_path = '../data/{}_eval_stats.csv'
 
 if __name__ == '__main__':
     parser = ArgumentParser()
