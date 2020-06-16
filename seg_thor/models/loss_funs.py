@@ -119,7 +119,7 @@ class MultiLabelWeightedLoss(nn.Module):
         for class_index in range(n_class):
             cur_loss = self.binary_loss(inputs[:, class_index],
                                         target[:, class_index])
-            count_loss += cur_loss.mean() * self.alpha[class_index]
+            count_loss += cur_loss.mean() * self.class_weights[class_index]
         return count_loss, inputs
 
 
