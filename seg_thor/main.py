@@ -142,7 +142,7 @@ parser.add_argument(
     metavar='1(True) or 0(False)',
     help='if using multi-task learning')
 
-DEVICE = torch.device("cuda" if True else "cpu")
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def main(args):

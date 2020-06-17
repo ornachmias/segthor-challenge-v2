@@ -2,7 +2,7 @@ import os
 from PIL import Image
 import numpy as np
 from torch.utils.data import Dataset
-import pdb
+import re
 
 
 def get_cross_validation_paths(test_flag):
@@ -96,14 +96,18 @@ class THOR_Data(Dataset):
                             cur_file_image.split('image.npy')[0] + 'label.npy'))
         self.data_files = []
         self.label_files = []
-        shuffle_idx = [i for i in range(len(data_files))]
-        np.random.shuffle(shuffle_idx)
-        for i in shuffle_idx:
+        data_files = sorted(data_files, key=lambda x: self.get_slice_id(x))
+        for i in range(len(data_files)):
             self.data_files.append(data_files[i])
             self.label_files.append(label_files[i])
         self.transform = transform
         assert (len(self.data_files) == len(self.label_files))
         print('the data length is %d' % len(self.data_files))
+
+    def get_slice_id(self, path):
+        m = re.search('Patient_(\d+)_(\d+)_image', path)
+        if m:
+            return int(m.group(1)), int(m.group(2))
 
     def __len__(self):
         L = len(self.data_files)
