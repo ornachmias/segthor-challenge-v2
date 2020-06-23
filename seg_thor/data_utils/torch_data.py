@@ -79,6 +79,7 @@ class THOR_Data(Dataset):
             path: the processed data path (training or testing)
         functions:
     '''
+
     def __init__(self, transform=None, path=None, file_list=None):
         data_listdirs = os.listdir(path)
         data_files = []
@@ -96,9 +97,9 @@ class THOR_Data(Dataset):
                             cur_file_image.split('image.npy')[0] + 'label.npy'))
         self.data_files = []
         self.label_files = []
+
         data_files = sorted(data_files, key=lambda x: self.get_slice_id(x))
         label_files = sorted(label_files, key=lambda x: self.get_slice_id(x))
-
         for i in range(len(data_files)):
             self.data_files.append(data_files[i])
             self.label_files.append(label_files[i])
@@ -121,9 +122,11 @@ class THOR_Data(Dataset):
         _img = Image.fromarray(_img)
         _target = np.load(self.label_files[index])
         _target = Image.fromarray(np.uint8(_target))
+        patient, slice = self.get_slice_id(self.data_files[index])
         sample = {'image': _img, 'label': _target}
         if self.transform is not None:
             sample = self.transform(sample)
+        sample.update({"patient": patient, "slice": slice})
         return sample
 
     def __str__(self):
@@ -145,5 +148,3 @@ class THOR_Data(Dataset):
             result.append(sample)
 
         return result
-
-    
