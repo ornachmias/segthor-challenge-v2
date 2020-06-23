@@ -165,7 +165,7 @@ def main(args):
         n_classes=args.n_class,
         alpha=alpha,
         if_closs=args.if_closs,
-        class_weights=torch.FloatTensor([4.0, 2.0, 5.0, 3.0]).to(DEVICE))
+        class_weights=torch.FloatTensor([6.756, 0.353, 9.615, 1.086]).to(DEVICE))
     start_epoch = args.start_epoch
     save_dir = args.save_dir
     logging.info(args)
