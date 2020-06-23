@@ -108,7 +108,7 @@ class THOR_Data(Dataset):
         print('the data length is %d' % len(self.data_files))
 
     def get_slice_id(self, path):
-        m = re.search('Patient_(\d+)_(\d+)_image', path)
+        m = re.search('Patient_(\d+)_(\d+)_', path)
         if m:
             return int(m.group(1)), int(m.group(2))
 
