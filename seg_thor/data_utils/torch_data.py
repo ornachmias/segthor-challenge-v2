@@ -97,10 +97,13 @@ class THOR_Data(Dataset):
         self.data_files = []
         self.label_files = []
         data_files = sorted(data_files, key=lambda x: self.get_slice_id(x))
+        label_files = sorted(label_files, key=lambda x: self.get_slice_id(x))
+
         for i in range(len(data_files)):
             self.data_files.append(data_files[i])
             self.label_files.append(label_files[i])
         self.transform = transform
+
         assert (len(self.data_files) == len(self.label_files))
         print('the data length is %d' % len(self.data_files))
 
@@ -130,7 +133,6 @@ class THOR_Data(Dataset):
         result = []
         data_files = [x for x in self.data_files if dir_name in x]
         label_files = [x for x in self.label_files if dir_name in x]
-
         for i in range(len(data_files)):
             _img = np.load(data_files[i])
             _img = Image.fromarray(_img)
