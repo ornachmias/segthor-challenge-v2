@@ -189,3 +189,39 @@ class DicePlusXEntLoss(nn.Module):
         c_loss, c_p = self.c_loss_fun(c_logit, c_label)
         total_loss = s_loss + c_loss
         return total_loss, c_loss, s_loss, c_p
+
+
+class WeightedSoftDiceLoss(nn.Module):
+    """
+    The Dice Loss function
+    """
+    def __init__(self, weights, smooth=1e-6):
+        super(WeightedSoftDiceLoss, self).__init__()
+        self.smooth = smooth
+        self.weights = weights
+
+    def forward(self, probs, labels):
+        numerator = 2 * torch.sum(labels * probs, 2)
+        denominator = torch.sum(labels + probs**2, 2) + self.smooth
+        return 1 - torch.mean(self.weights * (numerator / denominator))
+
+
+class WeightedCombinedLoss(nn.Module):
+    def __init__(self, weights, alpha=None, if_closs=1):
+        super(WeightedCombinedLoss, self).__init__()
+        self.closs_flag = if_closs
+        self.s_loss_fun = WeightedSoftDiceLoss(weights)
+        if alpha is not None:
+            self.c_loss_fun = DependentLoss(alpha)
+        else:
+            self.c_loss_fun = MultiLabelLoss()
+
+    def forward(self, s_logit, c_logit, s_label, c_label):
+        probs = F.softmax(s_logit, 1)
+        batch_size, n_class = probs.size(0), probs.size(1)
+        labels = s_label.view(batch_size, n_class, -1).float()
+        probs = probs.view(batch_size, n_class, -1)
+        s_loss = self.s_loss_fun(probs, labels)
+        c_loss, c_p = self.c_loss_fun(c_logit, c_label)
+        total_loss = s_loss + self.closs_flag * c_loss
+        return total_loss, c_loss, s_loss, c_p

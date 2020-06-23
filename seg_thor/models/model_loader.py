@@ -7,6 +7,9 @@ def get_full_model(model_name='deeplabv3_plus_resnet', loss_name='DiceLoss2', n_
     elif loss_name == 'DicePlusXEnt':
         from .loss_funs import DicePlusXEntLoss
         loss = DicePlusXEntLoss(class_weights=class_weights)
+    elif loss_name == 'WeightedCombinedLoss':
+        from .loss_funs import WeightedCombinedLoss
+        loss = WeightedCombinedLoss(weights=class_weights, alpha=alpha, if_closs=if_closs)
 
     if model_name == 'ResUNet101':
         from .my_unet import ResUNet101
