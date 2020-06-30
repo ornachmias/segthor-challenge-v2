@@ -142,11 +142,11 @@ parser.add_argument(
     metavar='1(True) or 0(False)',
     help='if using multi-task learning')
 parser.add_argument(
-    '--ostu',
+    '--otsu',
     default=0,
     type=int,
     metavar='1(True) or 0(False)',
-    help='run OSTU when loading images')
+    help='run otsu when loading images')
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -207,7 +207,7 @@ def main(args):
         tr.Normalize(mean=(0.12, 0.12, 0.12), std=(0.018, 0.018, 0.018)),
         tr.ToTensor2(args.n_class)])
     train_dataset = THOR_Data(
-        transform=composed_transforms_tr, path=data_path, file_list=train_files, ostu=args.ostu)
+        transform=composed_transforms_tr, path=data_path, file_list=train_files, otsu=args.otsu)
     trainloader = DataLoader(
         train_dataset,
         batch_size=args.batch_size,
@@ -407,7 +407,7 @@ def run_on_evaluation_set(args, net, loss, epoch, save_dir, test_files, saved_th
         transform=composed_transforms_tr,
         path=args.data_path,
         file_list=test_files,
-        ostu=args.ostu
+        otsu=args.otsu
     )
     evalloader = DataLoader(
         eval_dataset,

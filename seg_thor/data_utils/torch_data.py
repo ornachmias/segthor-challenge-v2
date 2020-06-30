@@ -80,7 +80,7 @@ class THOR_Data(Dataset):
         functions:
     '''
 
-    def __init__(self, transform=None, path=None, file_list=None, ostu=0):
+    def __init__(self, transform=None, path=None, file_list=None, otsu=0):
         data_listdirs = os.listdir(path)
         data_files = []
         label_files = []
@@ -104,7 +104,7 @@ class THOR_Data(Dataset):
             self.data_files.append(data_files[i])
             self.label_files.append(label_files[i])
         self.transform = transform
-        self.run_ostu = ostu
+        self.run_otsu = otsu
 
         assert (len(self.data_files) == len(self.label_files))
         print('the data length is %d' % len(self.data_files))
@@ -122,7 +122,7 @@ class THOR_Data(Dataset):
         _img = np.load(self.data_files[index])
         _img = Image.fromarray(_img)
 
-        if self.run_ostu == 1:
+        if self.run_otsu == 1:
             pass
 
         _target = np.load(self.label_files[index])
