@@ -80,7 +80,7 @@ class THOR_Data(Dataset):
         functions:
     '''
 
-    def __init__(self, transform=None, path=None, file_list=None):
+    def __init__(self, transform=None, path=None, file_list=None, ostu=0):
         data_listdirs = os.listdir(path)
         data_files = []
         label_files = []
@@ -104,6 +104,7 @@ class THOR_Data(Dataset):
             self.data_files.append(data_files[i])
             self.label_files.append(label_files[i])
         self.transform = transform
+        self.run_ostu = ostu
 
         assert (len(self.data_files) == len(self.label_files))
         print('the data length is %d' % len(self.data_files))
@@ -120,6 +121,10 @@ class THOR_Data(Dataset):
     def __getitem__(self, index):
         _img = np.load(self.data_files[index])
         _img = Image.fromarray(_img)
+
+        if self.run_ostu == 1:
+            pass
+
         _target = np.load(self.label_files[index])
         _target = Image.fromarray(np.uint8(_target))
         patient, slice = self.get_slice_id(self.data_files[index])
