@@ -148,7 +148,10 @@ parser.add_argument(
     metavar='1(True) or 0(False)',
     help='run otsu when loading images')
 
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+_DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+print("Running on {}".format(_DEVICE))
+DEVICE = torch.device(_DEVICE)
 
 
 def main(args):
@@ -158,6 +161,18 @@ def main(args):
     setgpu(args.gpu)
     data_path = args.data_path
     train_files, test_files = get_cross_validation_paths(args.test_flag)
+
+    composed_transforms_tr = transforms.Compose([
+        tr.Normalize(mean=(0.12, 0.12, 0.12), std=(0.018, 0.018, 0.018)),
+        tr.ToTensor2(args.n_class)
+    ])
+    eval_dataset = THOR_Data(
+        transform=composed_transforms_tr,
+        path=args.data_path,
+        file_list=test_files,
+        otsu=args.otsu
+    )
+
     if args.if_dependent == 1:
         alpha = get_global_alpha(train_files, data_path)
         alpha = torch.from_numpy(alpha).float().to(DEVICE)
@@ -234,7 +249,7 @@ def main(args):
         if epoch < args.untest_epoch:
             continue
         break_flag += 1
-        eval_dice, eval_precision = evaluation(args, net, loss, epoch, save_dir, test_files, selected_thresholds,
+        eval_dice, eval_precision = evaluation(args, net, loss, epoch, eval_dataset, selected_thresholds,
                                                cur_eval_stats_path)
         if max_precision <= eval_precision:
             selected_thresholds = adaptive_thresholds
@@ -326,25 +341,26 @@ def train(data_loader, net, loss, epoch, optimizer, get_lr, save_dir, stats_path
     return np.mean(total_train_loss), adaptive_thresholds
 
 
-def evaluation(args, net, loss, epoch, save_dir, test_files, saved_thresholds, stats_path):
+def evaluation(args, net, loss, epoch, eval_dataset, saved_thresholds, stats_path):
+    logging.info("Started evaluation")
     cur_predict, cur_target, class_predict, class_target, eval_loss, start_time = run_on_evaluation_set(args,
                                                                                                         net,
                                                                                                         loss,
                                                                                                         epoch,
-                                                                                                        save_dir,
-                                                                                                        test_files,
-                                                                                                        saved_thresholds,
+                                                                                                        eval_dataset,
                                                                                                         stats_path)
 
-    return evaluate_test_results(cur_predict,
-                                 cur_target,
-                                 class_predict,
-                                 class_target,
-                                 saved_thresholds,
-                                 epoch,
-                                 start_time,
-                                 eval_loss,
-                                 stats_path)
+    result = evaluate_test_results(cur_predict,
+                                   cur_target,
+                                   class_predict,
+                                   class_target,
+                                   saved_thresholds,
+                                   epoch,
+                                   start_time,
+                                   eval_loss,
+                                   stats_path)
+    logging.info("Finished evaluation")
+    return result
 
 
 def evaluate_test_results(cur_predict, cur_target, class_predict, class_traget, saved_thresholds, epoch, start_time,
@@ -401,21 +417,11 @@ def evaluate_test_results(cur_predict, cur_target, class_predict, class_traget, 
     return np.mean(dices), np.mean(total_precision)
 
 
-def run_on_evaluation_set(args, net, loss, epoch, save_dir, test_files, saved_thresholds, stats_path):
+def run_on_evaluation_set(args, net, loss, epoch, eval_dataset, stats_path):
     net.eval()
     eval_loss = []
     start_time = time.time()
 
-    composed_transforms_tr = transforms.Compose([
-        tr.Normalize(mean=(0.12, 0.12, 0.12), std=(0.018, 0.018, 0.018)),
-        tr.ToTensor2(args.n_class)
-    ])
-    eval_dataset = THOR_Data(
-        transform=composed_transforms_tr,
-        path=args.data_path,
-        file_list=test_files,
-        otsu=args.otsu
-    )
     evalloader = DataLoader(
         eval_dataset,
         batch_size=args.batch_size,
