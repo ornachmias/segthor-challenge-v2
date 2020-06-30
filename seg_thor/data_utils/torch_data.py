@@ -119,7 +119,16 @@ class THOR_Data(Dataset):
         return L
 
     def __getitem__(self, index):
-        _img = np.load(self.data_files[index])
+        data_file = self.data_files[index]
+        patient_id, slice_id = self.get_slice_id(data_file)
+        slice_id = slice_id / 300
+
+        _img = np.load(data_file)
+        h = _img.shape[0]
+        w = _img.shape[1]
+
+        index_channel = np.ones((h, w)) * slice_id
+        #_img = np.dstack((_img, index_channel))
         _img = Image.fromarray(_img)
 
         if self.run_otsu == 1:
@@ -131,7 +140,7 @@ class THOR_Data(Dataset):
         sample = {'image': _img, 'label': _target}
         if self.transform is not None:
             sample = self.transform(sample)
-        sample.update({"patient": patient, "slice": slice})
+        sample.update({"patient": patient, "slice": slice, 'index': index_channel})
         return sample
 
     def __str__(self):

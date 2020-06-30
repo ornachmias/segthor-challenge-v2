@@ -278,6 +278,13 @@ def train(data_loader, net, loss, epoch, optimizer, get_lr, save_dir, stats_path
         data = sample['image']
         target_c = sample['label_c']
         target_s = sample['label_s']
+
+        if args.model_name == "ResUNet101Index":
+            batch_size = data.size(0)
+            h = data.size(2)
+            w = data.size(3)
+            data = torch.cat((data, sample['index'].float().unsqueeze(0).reshape((batch_size, 1, h, w))), dim=1)
+
         data = data.to(DEVICE)
         target_c = target_c.to(DEVICE)
         target_s = target_s.to(DEVICE)
@@ -422,6 +429,13 @@ def run_on_evaluation_set(args, net, loss, epoch, save_dir, test_files, saved_th
         data = sample['image']
         target_c = sample['label_c']
         target_s = sample['label_s']
+
+        if args.model_name == "ResUNet101Index":
+            batch_size = data.size(0)
+            h = data.size(2)
+            w = data.size(3)
+            data = torch.cat((data, sample['index'].float().unsqueeze(0).reshape((batch_size, 1, h, w))), dim=1)
+
         data = data.to(DEVICE)
         target_c = target_c.to(DEVICE)
         target_s = target_s.to(DEVICE)

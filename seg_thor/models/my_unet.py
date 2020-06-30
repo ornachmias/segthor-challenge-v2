@@ -394,8 +394,64 @@ class ResUNet101(nn.Module):
         x_c = self.class_conv(x)
         x_s = self.last_conv(x)
         return x_s, x_c.view(x_c.size(0), x_c.size(1))
-    
-    
+
+
+class ResUNet101Index(nn.Module):
+    def __init__(self,
+                 n_channels,
+                 n_classes,
+                 drop_rate,
+                 pretrained,
+                 fine_tune=False):
+        super(ResUNet101Index, self).__init__()
+        from .vision_resnet import resnet101
+        self.embed_index = nn.Conv2d(n_channels, 3, kernel_size=1, stride=1)
+        self.forward_resnet = resnet101(pretrained=pretrained)
+        self.up0 = up(
+            2048 + 1024,
+            1024,
+            num_layers=1,
+            drop_rate=drop_rate,
+            bn_size=4,
+            growth_rate=48)
+        self.up1 = up(
+            1024 + 512 + 48,
+            512,
+            num_layers=1,
+            drop_rate=drop_rate,
+            bn_size=4,
+            growth_rate=48)
+        self.up2 = up(
+            512 + 256 + 48,
+            256,
+            num_layers=1,
+            drop_rate=drop_rate,
+            bn_size=4,
+            growth_rate=48)
+        self.back_conv = nn.Sequential(_BackwardTransition(256 + 48, 256),
+                                       _BackwardTransition(
+                256, 256) )
+        self.last_conv = nn.Sequential(
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True), nn.Conv2d(256, n_classes, kernel_size=1, stride=1))
+        self.class_conv = nn.Sequential(
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 4, kernel_size=1, stride=1),
+            nn.AdaptiveAvgPool2d(1), nn.Sigmoid())
+
+    def forward(self, x):
+        x = self.embed_index(x)
+        down0, down1, down2, out = self.forward_resnet(x)
+        x = self.up0(out, down2)
+        x = self.up1(x, down1)
+        x = self.up2(x, down0)
+        x = self.back_conv(x)
+        x_c = self.class_conv(x)
+        x_s = self.last_conv(x)
+        return x_s, x_c.view(x_c.size(0), x_c.size(1))
+
+
 class ResUNet152(nn.Module):
     def __init__(self,
                  n_channels,
