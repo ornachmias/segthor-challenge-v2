@@ -145,7 +145,7 @@ parser.add_argument(
     '--otsu',
     default=0,
     type=int,
-    metavar='1(True) or 0(False)',
+    metavar='0(False), 1(Single Threshold), 2(Multiple Thresholds)',
     help='run otsu when loading images')
 
 

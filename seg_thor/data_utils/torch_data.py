@@ -132,12 +132,25 @@ class THOR_Data(Dataset):
         h = _img.shape[0]
         w = _img.shape[1]
         index_channel = np.ones((h, w)) * slice_id
-        #_img = np.dstack((_img, index_channel))
+
         if self.run_otsu == 1:
             middle_img = _img[:, :, 1]
             if len(np.unique(middle_img)) > 1:
                 val = filters.threshold_otsu(middle_img)
                 _img[_img[:, :, 1] < val] = 0
+        elif self.run_otsu == 2:
+            num_thresholds = 10
+            middle_img = np.copy(_img[:, :, 1])
+            if len(np.unique(middle_img)) > num_thresholds:
+                thresholds = filters.threshold_multiotsu(middle_img, classes=num_thresholds, nbins=1000)
+                middle_img[_img[:, :, 1] < thresholds[0]] = 0
+                middle_img[_img[:, :, 1] > thresholds[-1]] = 1
+
+                for i in range(1, len(thresholds) - 1):
+                    middle_img[thresholds[i] < _img[:, :, 1] <= thresholds[i + 1]] = i / num_thresholds
+
+                _img[:, :, 1] = middle_img
+
         _img = Image.fromarray(_img)
 
         _target = np.load(self.label_files[index])
