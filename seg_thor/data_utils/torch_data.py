@@ -100,7 +100,6 @@ class THOR_Data(Dataset):
                             cur_file_image.split('image.npy')[0] + 'label.npy'))
         self.data_files = []
         self.label_files = []
-        self.db = {}
 
         data_files = sorted(data_files, key=lambda x: self.get_slice_id(x))
         label_files = sorted(label_files, key=lambda x: self.get_slice_id(x))
@@ -122,8 +121,6 @@ class THOR_Data(Dataset):
         return len(self.data_files)
 
     def __getitem__(self, index):
-        if index in self.db:
-            return self.db[index]
         data_file = self.data_files[index]
         patient_id, slice_id = self.get_slice_id(data_file)
         slice_id = slice_id / 300
@@ -160,7 +157,6 @@ class THOR_Data(Dataset):
         if self.transform is not None:
             sample = self.transform(sample)
         sample.update({"patient": patient, "slice": slice, 'index': index_channel})
-        self.db[index] = sample
         return sample
 
     def __str__(self):
