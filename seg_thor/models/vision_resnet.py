@@ -1,10 +1,8 @@
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 
-
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152']
-
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -110,8 +108,8 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
-#         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-#         self.fc = nn.Linear(512 * block.expansion, num_classes)
+        #         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        #         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

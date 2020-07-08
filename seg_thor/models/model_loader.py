@@ -17,6 +17,9 @@ def get_full_model(model_name='deeplabv3_plus_resnet', loss_name='DiceLoss2', n_
     elif model_name == 'ResUNet101Index':
         from .my_unet import ResUNet101Index
         net = ResUNet101Index(n_channels=4, n_classes=n_classes, drop_rate=0., pretrained=pretrained)
+    elif model_name == 'ResUNet101NoBatchNorm':
+        from models.resnet_no_norm import ResUNet101NoBatchNorm
+        net = ResUNet101NoBatchNorm(n_channels=3, n_classes=n_classes, drop_rate=0., pretrained=pretrained)
     elif model_name == 'ResUNet152':
         from .my_unet import ResUNet152
         net = ResUNet152(n_channels=3, n_classes=n_classes, drop_rate=0., pretrained=pretrained)

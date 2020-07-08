@@ -1,1 +1,7 @@
 .idea
+.DS_Store
+.python-version
+data/
+*__pycache__*
+venv
+seg_thor/results

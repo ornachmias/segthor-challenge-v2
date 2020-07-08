@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from collections import OrderedDict
-import pdb
 
 
 class _DenseLayer(nn.Sequential):
@@ -48,7 +46,7 @@ class _DenseBlock(nn.Sequential):
                                 growth_rate, bn_size, drop_rate)
             self.add_module('denselayer%d' % (i + 1), layer)
 
-            
+
 class _BackwardTransition(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(_BackwardTransition, self).__init__()
@@ -98,18 +96,6 @@ class up(nn.Module):
         return x
 
 
-class outconv(nn.Module):
-    def __init__(self, in_ch, out_ch):
-        super(outconv, self).__init__()
-        self.conv = nn.Sequential(
-            _BackwardTransition(in_ch, in_ch/2), _BackwardTransition(
-                in_ch/2, in_ch/2), nn.ReLU(),
-            nn.Conv2d(in_ch/2, out_ch, kernel_size=1, stride=1))
-    def forward(self, x):
-        x = self.conv(x)
-        return x
-
-
 class DenseUNet161(nn.Module):
     def __init__(self,
                  n_channels,
@@ -147,7 +133,7 @@ class DenseUNet161(nn.Module):
             growth_rate=48)
         self.back_conv = nn.Sequential(_BackwardTransition(384 + 48, 256),
                                        _BackwardTransition(
-                256, 256) )
+                                           256, 256))
         self.last_conv = nn.Sequential(
             nn.BatchNorm2d(256),
             nn.ReLU(inplace=True), nn.Conv2d(256, n_classes, kernel_size=1, stride=1))
@@ -167,7 +153,7 @@ class DenseUNet161(nn.Module):
         x_s = self.last_conv(x)
         return x_s, x_c.view(x_c.size(0), x_c.size(1))
 
-    
+
 class DenseUNet201(nn.Module):
     def __init__(self,
                  n_channels,
@@ -205,7 +191,7 @@ class DenseUNet201(nn.Module):
             growth_rate=48)
         self.back_conv = nn.Sequential(_BackwardTransition(256 + 48, 256),
                                        _BackwardTransition(
-                256, 256) )
+                                           256, 256))
         self.last_conv = nn.Sequential(
             nn.BatchNorm2d(256),
             nn.ReLU(inplace=True), nn.Conv2d(256, n_classes, kernel_size=1, stride=1))
@@ -224,8 +210,8 @@ class DenseUNet201(nn.Module):
         x_c = self.class_conv(x)
         x_s = self.last_conv(x)
         return x_s, x_c.view(x_c.size(0), x_c.size(1))
-    
-    
+
+
 class DenseUNet169(nn.Module):
     def __init__(self,
                  n_channels,
@@ -263,7 +249,7 @@ class DenseUNet169(nn.Module):
             growth_rate=48)
         self.back_conv = nn.Sequential(_BackwardTransition(256 + 48, 192),
                                        _BackwardTransition(
-                192, 192) )
+                                           192, 192))
         self.last_conv = nn.Sequential(
             nn.BatchNorm2d(192),
             nn.ReLU(inplace=True), nn.Conv2d(192, n_classes, kernel_size=1, stride=1))
@@ -282,7 +268,7 @@ class DenseUNet169(nn.Module):
         x_c = self.class_conv(x)
         x_s = self.last_conv(x)
         return x_s, x_c.view(x_c.size(0), x_c.size(1))
-    
+
 
 class DenseUNet121(nn.Module):
     def __init__(self,
@@ -321,7 +307,7 @@ class DenseUNet121(nn.Module):
             growth_rate=48)
         self.back_conv = nn.Sequential(_BackwardTransition(256 + 48, 256),
                                        _BackwardTransition(
-                256, 256) )
+                                           256, 256))
         self.last_conv = nn.Sequential(
             nn.BatchNorm2d(256),
             nn.ReLU(inplace=True), nn.Conv2d(256, n_classes, kernel_size=1, stride=1))
@@ -375,7 +361,7 @@ class ResUNet101(nn.Module):
             growth_rate=48)
         self.back_conv = nn.Sequential(_BackwardTransition(256 + 48, 256),
                                        _BackwardTransition(
-                256, 256) )
+                                           256, 256))
         self.last_conv = nn.Sequential(
             nn.BatchNorm2d(256),
             nn.ReLU(inplace=True), nn.Conv2d(256, n_classes, kernel_size=1, stride=1))
@@ -430,7 +416,7 @@ class ResUNet101Index(nn.Module):
             growth_rate=48)
         self.back_conv = nn.Sequential(_BackwardTransition(256 + 48, 256),
                                        _BackwardTransition(
-                256, 256) )
+                                           256, 256))
         self.last_conv = nn.Sequential(
             nn.BatchNorm2d(256),
             nn.ReLU(inplace=True), nn.Conv2d(256, n_classes, kernel_size=1, stride=1))
@@ -485,7 +471,7 @@ class ResUNet152(nn.Module):
             growth_rate=48)
         self.back_conv = nn.Sequential(_BackwardTransition(256 + 48, 256),
                                        _BackwardTransition(
-                256, 192) )
+                                           256, 192))
         self.last_conv = nn.Sequential(
             nn.BatchNorm2d(192),
             nn.ReLU(inplace=True), nn.Conv2d(192, n_classes, kernel_size=1, stride=1))
@@ -504,5 +490,3 @@ class ResUNet152(nn.Module):
         x_c = self.class_conv(x)
         x_s = self.last_conv(x)
         return x_s, x_c.view(x_c.size(0), x_c.size(1))
-
-
