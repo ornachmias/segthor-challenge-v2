@@ -65,6 +65,69 @@ class _BackwardTransition(nn.Module):
         return x
 
 
+class conv_block(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super(conv_block, self).__init__()
+
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_ch, out_ch, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True))
+
+    def forward(self, x):
+        x = self.conv(x)
+        return x
+
+
+class up_conv(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super(up_conv, self).__init__()
+        self.up = nn.Sequential(
+            nn.Upsample(scale_factor=2),
+            nn.Conv2d(in_ch, out_ch, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        x = self.up(x)
+        return x
+
+
+class Attention_block(nn.Module):
+    def __init__(self, F_g, F_l, F_int):
+        super(Attention_block, self).__init__()
+
+        self.W_g = nn.Sequential(
+            nn.Conv2d(F_l, F_int, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.BatchNorm2d(F_int)
+        )
+
+        self.W_x = nn.Sequential(
+            nn.Conv2d(F_g, F_int, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.BatchNorm2d(F_int)
+        )
+
+        self.psi = nn.Sequential(
+            nn.Conv2d(F_int, 1, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.BatchNorm2d(1),
+            nn.Sigmoid()
+        )
+
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, g, x):
+        g1 = self.W_g(g)
+        x1 = self.W_x(x)
+        psi = self.relu(g1 + x1)
+        psi = self.psi(psi)
+        out = x * psi
+        return out
+
+
 class up(nn.Module):
     def __init__(self,
                  num_features,
@@ -380,6 +443,63 @@ class ResUNet101(nn.Module):
         x_c = self.class_conv(x)
         x_s = self.last_conv(x)
         return x_s, x_c.view(x_c.size(0), x_c.size(1))
+
+
+class ResUNet101Attention(nn.Module):
+    def __init__(self,
+                 n_channels,
+                 n_classes,
+                 drop_rate,
+                 pretrained,
+                 fine_tune=False):
+        super(ResUNet101Attention, self).__init__()
+        from .vision_resnet import resnet101
+        self.forward_resnet = resnet101(pretrained=pretrained)
+
+        n1 = 128
+        filters = [n1, n1 * 2, n1 * 4, n1 * 8, n1 * 16]
+
+        self.Up5 = up_conv(filters[4], filters[3])
+        self.Att5 = Attention_block(F_g=filters[3], F_l=filters[3], F_int=filters[2])
+        self.Up_conv5 = conv_block(filters[4], filters[3])
+
+        self.Up4 = up_conv(filters[3], filters[2])
+        self.Att4 = Attention_block(F_g=filters[2], F_l=filters[2], F_int=filters[1])
+        self.Up_conv4 = conv_block(filters[3], filters[2])
+
+        self.Up3 = up_conv(filters[2], filters[1])
+        self.Att3 = Attention_block(F_g=filters[1], F_l=filters[1], F_int=filters[0])
+        self.Up_conv3 = conv_block(filters[2], filters[1])
+
+        self.Up2 = up_conv(filters[1], filters[0])
+        self.Att2 = Attention_block(F_g=filters[0], F_l=filters[0], F_int=32)
+        self.Up_conv2 = conv_block(filters[1], filters[0])
+
+        self.last_conv = nn.Conv2d(filters[0], n_classes, kernel_size=1, stride=1, padding=0)
+        self.class_conv = nn.Sequential(nn.Conv2d(filters[0], n_classes - 1, kernel_size=1, stride=1),
+                                        nn.AdaptiveAvgPool2d(1), nn.Sigmoid())
+
+    def forward(self, x):
+        down0, down1, down2, down3 = self.forward_resnet(x)
+        d5 = self.Up5(down3)
+
+        x4 = self.Att5(g=d5, x=down2)
+        d5 = torch.cat((x4, d5), dim=1)
+        d5 = self.Up_conv5(d5)
+
+        d4 = self.Up4(d5)
+        x3 = self.Att4(g=d4, x=down1)
+        d4 = torch.cat((x3, d4), dim=1)
+        d4 = self.Up_conv4(d4)
+
+        d3 = self.Up3(d4)
+        x2 = self.Att3(g=d3, x=down0)
+        d3 = torch.cat((x2, d3), dim=1)
+        d3 = self.Up_conv3(d3)
+
+        out_1 = self.last_conv(d3)
+        out_2 = self.class_conv(d3)
+        return out_1, out_2.view(out_2.size(0), out_2.size(1))
 
 
 class ResUNet101Index(nn.Module):
