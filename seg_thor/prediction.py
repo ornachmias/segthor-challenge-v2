@@ -215,6 +215,13 @@ for i, sample in enumerate(eval_loader):
         patients.append(patient)
     for slc in sample["slice"]:
         slices.append(slc)
+
+    if net_name == "ResUNet101Index":
+        batch_size = data.size(0)
+        h = data.size(2)
+        w = data.size(3)
+        data = torch.cat((data, sample['index'].float().unsqueeze(0).reshape((batch_size, 1, h, w))), dim=1)
+
     custom_output_dir = os.path.join(custom_output, str(i))
     os.makedirs(custom_output_dir, exist_ok=True)
     img_file_path = os.path.join(custom_output_dir, 'img.pkl')
