@@ -481,21 +481,21 @@ class ResUNet101Attention(nn.Module):
 
     def forward(self, x):
         down0, down1, down2, down3 = self.forward_resnet(x)
-        d5 = self.Up5(down3)
+        d5 = self.Up4(down3)
 
-        x4 = self.Att5(g=d5, x=down2)
+        x4 = self.Att4(g=d5, x=down2)
         d5 = torch.cat((x4, d5), dim=1)
-        d5 = self.Up_conv5(d5)
+        d5 = self.Up_conv4(d5)
 
-        d4 = self.Up4(d5)
-        x3 = self.Att4(g=d4, x=down1)
+        d4 = self.Up3(d5)
+        x3 = self.Att3(g=d4, x=down1)
         d4 = torch.cat((x3, d4), dim=1)
-        d4 = self.Up_conv4(d4)
+        d4 = self.Up_conv3(d4)
 
-        d3 = self.Up3(d4)
-        x2 = self.Att3(g=d3, x=down0)
+        d3 = self.Up2(d4)
+        x2 = self.Att2(g=d3, x=down0)
         d3 = torch.cat((x2, d3), dim=1)
-        d3 = self.Up_conv3(d3)
+        d3 = self.Up_conv2(d3)
 
         out_1 = self.last_conv(d3)
         out_2 = self.class_conv(d3)
