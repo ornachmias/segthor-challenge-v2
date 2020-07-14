@@ -475,9 +475,16 @@ class ResUNet101Attention(nn.Module):
         self.Att2 = Attention_block(F_g=filters[0], F_l=filters[0], F_int=32)
         self.Up_conv2 = conv_block(filters[1], filters[0])
 
-        self.last_conv = nn.Conv2d(filters[1], n_classes, kernel_size=1, stride=1, padding=0)
-        self.class_conv = nn.Sequential(nn.Conv2d(filters[1], n_classes - 1, kernel_size=1, stride=1),
-                                        nn.AdaptiveAvgPool2d(1), nn.Sigmoid())
+        self.back_conv = nn.Sequential(_BackwardTransition(filters[1], filters[1]),
+                                       _BackwardTransition(filters[1], filters[1]))
+        self.last_conv = nn.Sequential(
+            nn.BatchNorm2d(filters[1]),
+            nn.ReLU(inplace=True), nn.Conv2d(filters[1], n_classes, kernel_size=1, stride=1))
+        self.class_conv = nn.Sequential(
+            nn.BatchNorm2d(filters[1]),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(filters[1], 4, kernel_size=1, stride=1),
+            nn.AdaptiveAvgPool2d(1), nn.Sigmoid())
 
     def forward(self, x):
         down0, down1, down2, down3 = self.forward_resnet(x)
@@ -497,8 +504,9 @@ class ResUNet101Attention(nn.Module):
         d3 = torch.cat((x2, d3), dim=1)
         d3 = self.Up_conv3(d3)
 
-        out_1 = self.last_conv(d3)
-        out_2 = self.class_conv(d3)
+        out = self.back_conv(d3)
+        out_1 = self.last_conv(out)
+        out_2 = self.class_conv(out)
         return out_1, out_2.view(out_2.size(0), out_2.size(1))
 
 
