@@ -475,8 +475,8 @@ class ResUNet101Attention(nn.Module):
         self.Att2 = Attention_block(F_g=filters[0], F_l=filters[0], F_int=32)
         self.Up_conv2 = conv_block(filters[1], filters[0])
 
-        self.last_conv = nn.Conv2d(filters[0], n_classes, kernel_size=1, stride=1, padding=0)
-        self.class_conv = nn.Sequential(nn.Conv2d(filters[0], n_classes - 1, kernel_size=1, stride=1),
+        self.last_conv = nn.Conv2d(filters[1], n_classes, kernel_size=1, stride=1, padding=0)
+        self.class_conv = nn.Sequential(nn.Conv2d(filters[1], n_classes - 1, kernel_size=1, stride=1),
                                         nn.AdaptiveAvgPool2d(1), nn.Sigmoid())
 
     def forward(self, x):
